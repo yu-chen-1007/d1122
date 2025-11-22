@@ -1,0 +1,128 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+{% block title %}預約討論室{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">建立預約</h5>
+        <form method="POST" id="reserveForm">
+          <div class="mb-3">
+            <label class="form-label">姓名</label>
+            <input name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">學號</label>
+            <input name="student_id" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">討論室</label>
+            <select name="room" class="form-select">
+              {% for r in rooms %}
+                <option value="{{ r }}">{{ r }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">日期</label>
+            <input type="date" name="date" id="dateInput" class="form-control" required>
+          </div>
+
+          <hr>
+          <h6>選擇時段（每格 1 小時）</h6>
+          <p class="small text-muted">可勾選多格，但必須連續（系統會在送出時檢查）。</p>
+
+          <div id="slotsGrid" class="row g-2">
+            {% for start, end in slots %}
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="card slot-card p-2" data-start="{{ start }}" data-end="{{ end }}">
+                <div class="card-body py-2">
+                  <div class="form-check">
+                    <input class="form-check-input slot-checkbox" type="checkbox" name="slots" value="{{ start }}" id="slot{{ loop.index }}">
+                    <label class="form-check-label" for="slot{{ loop.index }}">
+                      <strong>{{ start }}</strong><br>
+                      <small class="text-muted">{{ end }}</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="mt-3">
+            <button type="submit" class="btn btn-primary">送出預約</button>
+            <a href="/reservations" class="btn btn-outline-secondary">查看所有預約</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="mt-3 text-muted small">
+      提示：系統會自動合併最早時段到最後時段作為一筆長時間預約（例如選 09:00 & 10:00 → 09:00–11:00）。
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">說明</h6>
+        <ul>
+          <li>時段範圍：08:00–23:00（最後一時段 22:00–23:00）。</li>
+          <li>若選取時段不是連續，會在送出時顯示錯誤訊息。</li>
+          <li>系統會在後端再檢查與現有預約是否衝突，避免競爭條件。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // UX: 點擊卡片也能選取 checkbox（增加互動）
+  document.querySelectorAll('.slot-card').forEach(card => {
+    card.addEventListener('click', function(e){
+      // 若 target 是 checkbox 本身或連結，略過
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'A') return;
+      const cb = card.querySelector('.slot-checkbox');
+      if (cb.disabled) return;
+      cb.checked = !cb.checked;
+      card.classList.toggle('slot-checked', cb.checked);
+    });
+    // 當 checkbox 改變時，卡片加上樣式
+    const cb = card.querySelector('.slot-checkbox');
+    cb.addEventListener('change', () => {
+      card.classList.toggle('slot-checked', cb.checked);
+    });
+  });
+
+  // 前端（送出前）簡單檢查：若勾選時段不連續提示使用者（同後端邏輯）
+  document.getElementById('reserveForm').addEventListener('submit', function(e){
+    const checked = Array.from(document.querySelectorAll('.slot-checkbox:checked')).map(i => i.value).sort();
+    if (checked.length === 0) {
+      alert('請至少選擇一個時段。');
+      e.preventDefault();
+      return;
+    }
+    // 檢查連續性
+    const times = checked.map(s => {
+      const parts = s.split(':');
+      return new Date(0,0,0, parseInt(parts[0],10), parseInt(parts[1],10));
+    });
+    for (let i=1;i<times.length;i++){
+      const diff = (times[i] - times[i-1]) / (1000*60*60);
+      if (diff !== 1) {
+        alert('選取的時段必須連續（不可跳格）。');
+        e.preventDefault();
+        return;
+      }
+    }
+    // 若通過，交由後端再次檢查衝突（最後防線）
+  });
+
+  // TODO: 可再加上：當變更日期或房間時，透過 AJAX 查詢該日該房已有預約並 disable 對應 checkbox。
+</script>
+{% endblock %}

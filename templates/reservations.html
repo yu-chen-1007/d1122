@@ -1,0 +1,46 @@
+<!-- templates/reservations.html -->
+{% extends "base.html" %}
+{% block title %}所有預約紀錄{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">所有預約紀錄</h5>
+
+    {% if reservations|length == 0 %}
+      <p class="text-muted">目前沒有任何預約。</p>
+    {% else %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>學號</th>
+              <th>討論室</th>
+              <th>日期</th>
+              <th>時段</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in reservations %}
+            <tr>
+              <td>{{ r.name }}</td>
+              <td>{{ r.student_id }}</td>
+              <td>{{ r.room }}</td>
+              <td>{{ r.date }}</td>
+              <td>{{ r.start_time }} ～ {{ r.end_time }}</td>
+              <td>
+                <a href="/delete/{{ r.id }}" class="btn btn-sm btn-danger" onclick="return confirm('確定要刪除嗎？');">刪除</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    <a class="btn btn-outline-secondary" href="/">⬅ 回預約頁</a>
+  </div>
+</div>
+{% endblock %}
